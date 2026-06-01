@@ -1,68 +1,85 @@
 import requests
 from bs4 import BeautifulSoup
-import csv
 from urllib.parse import urljoin
 import time
+import csv
+from logger import setup_logger
+from config.settings import RAW_CSV
 
-books_data = []
-url = "https://books.toscrape.com/"
-current_page_url = url
-base_url = "https://books.toscrape.com/catalogue"
+logger = setup_logger("project")
 
-while current_page_url:
-    try:
-        response = requests.get(current_page_url, timeout=10)
-        print("Status Code:", response.status_code)
+BASE_URL = "https://books.toscrape.com/catalogue/"
+START_PAGE = "page-1.html"
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/114.0.0.0 Safari/537.36",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Connection": "keep-alive",
+}
 
-        if response.status_code != 200:
-            break
-        soup = BeautifulSoup(response.text, "html.parser")
-        print("Connection Successful!")
 
-        books = soup.find_all("article", class_="product_pod")
+def scrape_books():
+    books_data = []
+    current_page_url = urljoin(BASE_URL, START_PAGE)
 
-        for book in books:
-            title = book.h3.a["title"]
-            price = book.find("p", class_="price_color").text
-            rating = book.find("p", class_="star-rating")["class"][1]
-            availability = book.find("p", class_="instock availability").text.strip()
+    session = requests.Session()
+    session.headers.update(HEADERS)
 
-            book_data = {
-                "title": title,
-                "price": price,
-                "rating": rating,
-                "availability": availability,
-            }
+    logger.info("Scraping started")
 
-            books_data.append(book_data)
-            print(
-                f"Title: {title}, Price: {price}, Rating: {rating}, Availability: {availability}"
+    while current_page_url:
+        try:
+            response = session.get(current_page_url, timeout=10)
+            response.encoding = "utf-8"
+            logger.info(
+                f"Requesting URL: {current_page_url} | Status Code: {response.status_code}"
             )
 
-        # Find next page
-        next_link = soup.find("li", class_="next")
-        print("Next URL:", current_page_url)
-        if next_link:
-            current_page_url = urljoin(base_url, next_link.a["href"])
-        else:
-            current_page_url = None
+            if response.status_code != 200:
+                logger.error(f"Failed to fetch page: {current_page_url}")
+                break
 
-        time.sleep(1)  # polite pause between requests
+            soup = BeautifulSoup(response.text, "html.parser")
+            books = soup.find_all("article", class_="product_pod")
 
-    except requests.exceptions.Timeout:
-        print("The request timed out.")
-        break
-    except requests.exceptions.ConnectionError:
-        print("Connection failed.")
-        break
-    except requests.exceptions.RequestException as e:
-        print("An error occurred:", e)
-        break
+            for book in books:
+                title = book.h3.a["title"]
+                price = soup.find("p", class_="price_color").text
+                rating = book.find("p", class_="star-rating")["class"][1]
+                availability = book.find(
+                    "p", class_="instock availability"
+                ).text.strip()
 
-# Export CSV after all pages are scraped
-fieldnames = ["title", "price", "rating", "availability"]
-with open("data/books.csv", "w", newline="", encoding="utf-8") as csvfile:
-    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-    writer.writeheader()
-    for book in books_data:
-        writer.writerow(book)
+                books_data.append(
+                    {
+                        "title": title,
+                        "price": price,
+                        "rating": rating,
+                        "availability": availability,
+                    }
+                )
+                logger.info(f"Scraped: {title}")
+            print(repr(price))
+
+            next_link = soup.find("li", class_="next")
+            if next_link:
+                current_page_url = urljoin(BASE_URL, next_link.a["href"])
+            else:
+                current_page_url = None
+
+            time.sleep(1)
+
+        except Exception as e:
+            logger.error(f"Error scraping {current_page_url}: {e}")
+            break
+
+    # Write CSV
+    fieldnames = ["title", "price", "rating", "availability"]
+    with open(RAW_CSV, "w", newline="", encoding="utf-8") as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(books_data)
+
+    logger.info(f"Scraping completed | Total books scraped: {len(books_data)}")
+    return books_data
