@@ -7,8 +7,8 @@ from config.settings import EMAIL_ADDRESS, APP_PASSWORD
 def send_email_report():
     msg = EmailMessage()
     msg["Subject"] = "Daily Books Report"
-    msg["From"] = "your_email@gmail.com"
-    msg["To"] = "client_email@example.com"
+    msg["From"] = EMAIL_ADDRESS
+    msg["To"] = "amotoa19@gmail.com"
     msg.set_content("Please find the attached daily books report.")
 
     # Attach Excel file
@@ -23,5 +23,5 @@ def send_email_report():
 
     # Send email
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-        smtp.login(EMAIL_ADDRESS, APP_PASSWORD)
+        smtp.login(EMAIL_ADDRESS, APP_PASSWORD.strip())
         smtp.send_message(msg)

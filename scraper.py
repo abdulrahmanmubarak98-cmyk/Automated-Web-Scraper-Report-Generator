@@ -41,11 +41,11 @@ def scrape_books():
                 break
 
             soup = BeautifulSoup(response.text, "html.parser")
-            books = soup.find_all("article", class_="product_pod")
+            books = soup.select("article.product_pod")
 
             for book in books:
                 title = book.h3.a["title"]
-                price = soup.find("p", class_="price_color").text
+                price = book.select_one(".price_color").text
                 rating = book.find("p", class_="star-rating")["class"][1]
                 availability = book.find(
                     "p", class_="instock availability"
