@@ -4,6 +4,7 @@ from scraper import scrape_books
 from cleaner import clean_books
 from reporter import generate_excel_report
 from logger import setup_logger
+from email_sender import send_email_report
 
 logger = setup_logger("project")
 
@@ -24,6 +25,9 @@ def run_pipeline():
     report_path = generate_excel_report()
 
     logger.info(f"Report generated: {report_path}")
+
+    send_email_report()
+    logger.info("Email sent successfull")
 
     logger.info("Pipeline completed successfully")
 

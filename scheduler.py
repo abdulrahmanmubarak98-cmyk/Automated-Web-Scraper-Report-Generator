@@ -29,10 +29,9 @@ def scheduled_job():
 # schedule.every(1).minutes.do(scheduled_job)
 
 # Production schedule
-schedule.every().day.at("09:00").do(scheduled_job)
-
+schedule.every().day.at("8:00").do(scheduled_job)
 logger.info("Scheduler started. Waiting for scheduled tasks...")
 
 while True:
     schedule.run_pending()
-    time.sleep(60)
+    time.sleep(1)
